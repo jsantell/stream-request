@@ -10,6 +10,7 @@ Middleware for attaching a multipart/form-data stream to a `connect` request.
 ### Functions
 
 * `streamRequest(options)` Takes an options object `options` and returns a function to be used as middleware.
+
 ### Usage
 
 ```javascript
@@ -33,7 +34,7 @@ app.post('/upload', streamRequest(), function (req, res) {
 
 ### Test
 
-`npm install && npm test
+`npm install && npm test`
 
 ### License
 
