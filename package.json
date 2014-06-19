@@ -1,0 +1,37 @@
+{
+  "name": "stream-request",
+  "version": "0.0.1",
+  "description": "Middleware for attaching a multipart/form-data stream to a `connect` request.",
+  "main": "index.js",
+  "scripts": {
+    "start": "npm install && node index.js",
+    "test": "export NODE_ENV=test && ./node_modules/.bin/mocha --reporter spec --ui bdd"
+  },
+  "author": {
+    "name": "Jordan Santell",
+    "url": "http://github.com/jsantell"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "multiparty": "3.2.4"
+  },
+  "devDependencies": {
+    "express": "^4.4.3",
+    "request": "2.33.0",
+    "mocha": "1.18.2",
+    "chai": "1.9.1",
+    "buffer-equal": "0.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/jsantell/stream-request"
+  },
+  "keywords": [
+    "stream",
+    "multipart",
+    "form",
+    "upload",
+    "file"
+  ],
+  "engines": ["node >= 0.10.2"]
+}
