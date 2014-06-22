@@ -1,16 +1,16 @@
-var chai = require('chai');
+var chai = require("chai");
 var expect = chai.expect;
-var express = require('express');
-var request = require('request');
-var bufferEqual = require('buffer-equal');
-var streamRequest = require('../');
+var express = require("express");
+var request = require("request");
+var bufferEqual = require("buffer-equal");
+var streamRequest = require("../");
 var PORT = 8940;
 
-function postFile (buffers, cb) {
-  var req = request.post('http://localhost:' + PORT, cb);
+function postFile (formData, cb) {
+  var req = request.post("http://localhost:" + PORT, cb);
   var form = req.form();
-  [].concat(buffers).forEach(function (buffer, i) {
-    form.append('file' + i, buffer);
+  Object.keys(formData).forEach(function (key) {
+    form.append(key, formData[key]);
   });
 }
 
@@ -22,61 +22,90 @@ function createBuffer (n) {
 
 function streamToBuffer (stream, cb) {
   var chunks = new Buffer([]);
-  stream.on('data', function (chunk) {
+  stream.on("data", function (chunk) {
     chunks = Buffer.concat([chunks, chunk], chunks.length + chunk.length);
-  }).on('end', function () {
+  }).on("end", function () {
     cb(null, chunks);
-  }).on('error', function (err) {
+  }).on("error", function (err) {
     cb(err);
   });
 }
 
 var server;
 
-describe('stream-request: options', function () {
-  it('filters out parts if filter provided', function (done) {
-    this.timeout(1000 * 120);
-    var app = express();
-    var filter = function (part) {
-      return part.name === 'file1';
-    };
-    app.use(streamRequest({ filter: filter }));
-    app.use(function (req, res) {
-      expect(req.stream).to.be.ok;
-      streamToBuffer(req.stream, function (err, streamBuf) {
-        expect(streamBuf.length).to.be.equal(1024 * 60);
-        expect(bufferEqual(streamBuf, buffers[1])).to.be.equal(true);
-        res.send(200);
-      });
-    });
-
-    try {
-      server = app.listen(PORT);
-    } catch (e) {
-      server = app.listen(++PORT);
-    }
-
-    var buffers = [createBuffer(1024 * 50), createBuffer(1024 * 60), createBuffer(1024 * 70)];
-    postFile(buffers, function (err, res, body) {
-      expect(err).to.not.be.ok;
-      expect(res.statusCode).to.be.equal(200);
-      server.close(done);
-      server = null;
-    });
-  });
-});
-
-describe('stream-request', function () {
+describe("stream-request: options", function () {
   beforeEach(function (done) {
     server ? server.close(done) : done();
   });
 
-  it('attaches the multipart stream to the request object (100KB)', function (done) {
+  describe("propertyName", function () {
+
+    it("stores form data on custom `propertyName` when no fields given.", function (done) {
+      var app = express();
+      app.use(streamRequest({ propertyName: "custom", stream: "stream" }));
+      app.use(function (req, res) {
+        expect(req.custom.stream).to.be.ok;
+        streamToBuffer(req.custom.stream, function (err, streamBuf) {
+          expect(bufferEqual(streamBuf, buffer)).to.be.equal(true);
+          res.send(200);
+        });
+      });
+
+      try {
+        server = app.listen(PORT);
+      } catch (e) {
+        server = app.listen(++PORT);
+      }
+
+      var buffer = createBuffer(1024 * 50);
+      postFile({ stream: buffer }, function (err, res, body) {
+        expect(err).to.not.be.ok;
+        expect(res.statusCode).to.be.equal(200);
+        server.close(done);
+        server = null;
+      });
+    });
+
+    it("stores form data on custom `propertyName` when multiple fields given.", function (done) {
+      var app = express();
+      app.use(streamRequest({ propertyName: "custom", stream: "stream" }));
+      app.use(function (req, res) {
+        expect(req.custom.stream).to.be.ok;
+        expect(req.custom.other).to.be.equal("hello");
+        streamToBuffer(req.custom.stream, function (err, streamBuf) {
+          expect(bufferEqual(streamBuf, buffer)).to.be.equal(true);
+          res.send(200);
+        });
+      });
+
+      try {
+        server = app.listen(PORT);
+      } catch (e) {
+        server = app.listen(++PORT);
+      }
+
+      var buffer = createBuffer(1024 * 50);
+      postFile({ other: "hello", stream: buffer }, function (err, res, body) {
+        expect(err).to.not.be.ok;
+        expect(res.statusCode).to.be.equal(200);
+        server.close(done);
+        server = null;
+      });
+    });
+  });
+});
+
+describe("stream-request; size testing", function () {
+  beforeEach(function (done) {
+    server ? server.close(done) : done();
+  });
+
+  it("attaches the multipart stream to the request object (100KB)", function (done) {
     var app = express();
-    app.use(streamRequest());
+    app.use(streamRequest({ stream: "buffer" }));
     app.use(function (req, res) {
-      expect(req.stream).to.be.ok;
-      streamToBuffer(req.stream, function (err, streamBuf) {
+      expect(req.body.buffer).to.be.ok;
+      streamToBuffer(req.body.buffer, function (err, streamBuf) {
         expect(err).to.be.not.ok;
         expect(streamBuf.length).to.be.equal(1024 * 100);
         expect(bufferEqual(streamBuf, buffer)).to.be.equal(true);
@@ -90,7 +119,7 @@ describe('stream-request', function () {
     } catch (e) {
       server = app.listen(++PORT);
     }
-    postFile(buffer, function (err, res, body) {
+    postFile({ buffer: buffer }, function (err, res, body) {
       expect(err).to.not.be.ok;
       expect(res.statusCode).to.be.equal(200);
       server.close(done);
@@ -98,12 +127,12 @@ describe('stream-request', function () {
     });
   });
 
-  it('attaches the multipart stream to the request object (5MB)', function (done) {
+  it("attaches the multipart stream to the request object (5MB)", function (done) {
     var app = express();
-    app.use(streamRequest());
+    app.use(streamRequest({ stream: "buffer" }));
     app.use(function (req, res) {
-      expect(req.stream).to.be.ok;
-      streamToBuffer(req.stream, function (err, streamBuf) {
+      expect(req.body.buffer).to.be.ok;
+      streamToBuffer(req.body.buffer, function (err, streamBuf) {
         expect(err).to.be.not.ok;
         expect(streamBuf.length).to.be.equal(1024 * 1024 * 5);
         expect(bufferEqual(streamBuf, buffer)).to.be.equal(true);
@@ -117,7 +146,7 @@ describe('stream-request', function () {
     } catch (e) {
       server = app.listen(++PORT);
     }
-    postFile(buffer, function (err, res, body) {
+    postFile({ buffer: buffer }, function (err, res, body) {
       expect(err).to.not.be.ok;
       expect(res.statusCode).to.be.equal(200);
       server.close(done);
@@ -125,15 +154,15 @@ describe('stream-request', function () {
     });
   });
 
-  it('attaches the multipart stream to the request object (50MB)', function (done) {
+  it("attaches the multipart stream to the request object (50MB)", function (done) {
     // Big object, set a larger timeout (2 mins)
     this.timeout(1000 * 120);
 
     var app = express();
-    app.use(streamRequest());
+    app.use(streamRequest({ stream: "buffer" }));
     app.use(function (req, res) {
-      expect(req.stream).to.be.ok;
-      streamToBuffer(req.stream, function (err, streamBuf) {
+      expect(req.body.buffer).to.be.ok;
+      streamToBuffer(req.body.buffer, function (err, streamBuf) {
         expect(err).to.be.not.ok;
         expect(streamBuf.length).to.be.equal(1024 * 1024 * 50);
         expect(bufferEqual(streamBuf, buffer)).to.be.equal(true);
@@ -147,7 +176,7 @@ describe('stream-request', function () {
     } catch (e) {
       server = app.listen(++PORT);
     }
-    postFile(buffer, function (err, res, body) {
+    postFile({ buffer: buffer }, function (err, res, body) {
       expect(err).to.not.be.ok;
       expect(res.statusCode).to.be.equal(200);
       server.close(done);
@@ -155,9 +184,9 @@ describe('stream-request', function () {
     });
   });
 
-  it('doesn\'t attach anything when no files given', function (done) {
+  it("doesn't attach anything when no files given", function (done) {
     var app = express();
-    app.use(streamRequest());
+    app.use(streamRequest({ stream: "buffer" }));
     app.use(function (req, res) {
       expect(req.stream).to.be.equal(undefined);
       res.send(200);
@@ -169,7 +198,7 @@ describe('stream-request', function () {
       server = app.listen(++PORT);
     }
 
-    request.post('http://localhost:' + PORT, function (err, res, body) {
+    request.post("http://localhost:" + PORT, function (err, res, body) {
       expect(err).to.not.be.ok;
       server.close(done);
       server = null;

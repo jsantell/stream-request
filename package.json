@@ -1,6 +1,6 @@
 {
   "name": "stream-request",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Middleware for attaching a multipart/form-data stream to a `connect` request.",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "multiparty": "3.2.4"
+    "multiparty": "^3.2.9"
   },
   "devDependencies": {
     "express": "^4.4.3",
@@ -33,5 +33,7 @@
     "upload",
     "file"
   ],
-  "engines": ["node >= 0.10.2"]
+  "engines": [
+    "node >= 0.10.2"
+  ]
 }
